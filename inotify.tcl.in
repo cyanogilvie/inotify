@@ -1,0 +1,10 @@
+load [file join $::notify::library @PKG_LIB_FILE@]
+
+namespace eval ::notify {
+	namespace export *
+
+	variable version @PACKAGE_VERSION@.@EXTRA_VERSION@
+}
+
+package provide @PACKAGE_NAME@ $::inotify
+

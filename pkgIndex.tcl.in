@@ -1,0 +1,5 @@
+#
+# Tcl package index file
+#
+package ifneeded @PACKAGE_NAME@ @PACKAGE_VERSION@.@EXTRA_VERSION@ \
+		[list eval [list namespace eval ::inotify [list variable library $dir]]\n[list source [file join $dir inotify.tcl]]]
