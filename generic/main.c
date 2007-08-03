@@ -1,6 +1,8 @@
 #include <tclstuff.h>
-#include <linux/inotify.h>
+#include <sys/inotify.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
+#include <malloc.h>
 
 /*
  * THIS IS NOT THREAD SAFE
@@ -15,11 +17,11 @@ static Tcl_HashTable	g_paths;
 static int list2mask(interp, list, mask) //<<<
 	Tcl_Interp		*interp;
 	Tcl_Obj			*list;
-	__u32			*mask;
+	uint32_t		*mask;
 {
 	int				objc, i, index;
-	Tcl_Obj			*objv[];
-	__u32			build = 0;
+	Tcl_Obj			**objv;
+	uint32_t		build = 0;
 	static CONST char *mask_bits[] = {
 		"IN_ACCESS",
 		"IN_MODIFY",
@@ -43,7 +45,7 @@ static int list2mask(interp, list, mask) //<<<
 		"IN_ALL_EVENTS",
 		(char *)NULL
 	};
-	__u32 map[] = {
+	uint32_t map[] = {
 		IN_ACCESS,
 		IN_MODIFY,
 		IN_ATTRIB,
@@ -87,18 +89,18 @@ static int glue_add_watch(cdata, interp, objc, objv) //<<<
 	Tcl_Obj *CONST	objv[];
 {
 	int				wd, is_new;
-	__u32			mask;
+	uint32_t		mask;
 	const char		*path;
 	Tcl_HashEntry	*entry;
 
 	CHECK_ARGS(2, "path mask");
 
-	path = Tcl_GetSting(objv[1]);
+	path = Tcl_GetString(objv[1]);
 	TEST_OK(list2mask(interp, objv[2], &mask));
 
 	wd = inotify_add_watch(g_queue, path, mask);
 
-	entry = Tcl_CreateHashEntry(g_paths, path, &is_new);
+	entry = Tcl_CreateHashEntry(&g_paths, path, &is_new);
 	if (is_new) {
 		// This was a new watch
 	} else {
@@ -121,11 +123,11 @@ static int glue_rm_watch(cdata, interp, objc, objv) //<<<
 	const char		*path;
 	Tcl_HashEntry	*entry;
 
-	CHECK_ARGS(2, "path");
+	CHECK_ARGS(1, "path");
 
 	path = Tcl_GetString(objv[1]);
 
-	entry = Tcl_FindHashEntry(g_paths, path);
+	entry = Tcl_FindHashEntry(&g_paths, path);
 
 	if (entry == NULL) {
 		Tcl_SetErrorCode(interp, "no_watches_on_path", path, NULL);
@@ -144,18 +146,20 @@ static int glue_rm_watch(cdata, interp, objc, objv) //<<<
 }
 
 //>>>
-static int slurp_queue(cdata, interp, objc, objv)
+static int glue_slurp_queue(cdata, interp, objc, objv) //<<<
 	ClientData		cdata;
 	Tcl_Interp		*interp;
 	int				objc;
 	Tcl_Obj *CONST	objv[];
 {
-	unsigned int		waiting, offset, eventsize;
-	int					res;
-	inotify_event		*event;
-	unsigned char		*buf;
-	size_t				read;
-	Tcl_Obj				*result;
+	unsigned int			waiting, offset, eventsize;
+	int						res;
+	struct inotify_event	*event;
+	unsigned char			*buf;
+	size_t					got;
+	Tcl_Obj					*result;
+
+	CHECK_ARGS(0, "");
 
 	waiting = 0;
 	res = ioctl(g_queue, FIONREAD, (char *)&waiting);
@@ -163,22 +167,24 @@ static int slurp_queue(cdata, interp, objc, objv)
 	if (res == -1)
 		THROW_ERROR("Problem checking queue length");
 
-	evant = (inotify_event *)buf = (unsigned char *)malloc(waiting);
-	read = read(g_queue, buf, waiting);
+	offset = 0;
+	buf = (unsigned char *)malloc(waiting);
+	event = (struct inotify_event *)(buf + offset);
+
+	got = read(g_queue, buf, waiting);
 
 	result = Tcl_NewListObj(0, NULL);
-	offset = 0;
-	while (read > 0) {
-		eventsize = sizeof(inotify_event) + event->len;
+	while (got > 0) {
+		eventsize = sizeof(struct inotify_event) + event->len;
 
-		if (Tcl_ListObjGetElements(interp, result,
+		if (Tcl_ListObjAppendElement(interp, result,
 					Tcl_NewStringObj(event->name, -1)) != TCL_OK) goto wobbly;
-		if (Tcl_ListObjGetElements(interp, result,
-					Tcl_NewIntObj(event->mask, -1)) != TCL_OK) goto wobbly;
+		if (Tcl_ListObjAppendElement(interp, result,
+					Tcl_NewIntObj(event->mask)) != TCL_OK) goto wobbly;
 
-		read -= eventsize;
+		got -= eventsize;
 		offset += eventsize;
-		event = (inotify_event *)buf[offset];
+		event = (struct inotify_event *)(buf + offset);
 	}
 
 	free(buf);
@@ -192,7 +198,7 @@ wobbly:
 	return TCL_ERROR;
 }
 
-
+//>>>
 int Inotify_Init(Tcl_Interp *interp) //<<<
 {
 	if (Tcl_InitStubs(interp, "8.1", 0) == NULL)

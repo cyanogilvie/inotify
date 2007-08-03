@@ -1,0 +1,32 @@
+# vim: ft=tcl foldmethod=marker foldmarker=<<<,>>> shiftwidth=4 ts=4
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+	package require tcltest 2.2.5
+	namespace import ::tcltest::*
+}
+
+
+set tmpdir [makeDirectory tmp]
+
+package require inotify
+
+test basic-1.1 {Add and remove a watch} -body { #<<<
+	inotify::add_watch $tmpdir {IN_ALL_EVENTS}
+	inotify::rm_watch $tmpdir
+} -result {-1}
+#>>>
+test basic-1.2 {Detect a file creation in a dir} -setup { #<<<
+	inotify::add_watch $tmpdir {IN_ALL_EVENTS}
+} -body {
+	set fp	[open [file join $tmpdir foo] w]
+	puts $fp "dummy"
+	close $fp
+
+	inotify::slurp_queue
+} -cleanup {
+	inotify::rm_watch $tmpdir
+} -result {}
+#>>>
+
+::tcltest::cleanupTests
+return
