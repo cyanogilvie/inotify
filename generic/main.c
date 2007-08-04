@@ -4,14 +4,6 @@
 #include <unistd.h>
 #include <malloc.h>
 
-/*
- * THIS IS NOT THREAD SAFE
- *
- * AT ALL
- */
-
-
-static Tcl_HashTable	g_paths;
 
 static int list2mask(interp, list, mask) //<<<
 	Tcl_Interp		*interp;
@@ -165,7 +157,6 @@ static int glue_add_watch(cdata, interp, objc, objv) //<<<
 	int				queue_fd, wd, is_new;
 	uint32_t		mask;
 	const char		*path;
-	Tcl_HashEntry	*entry;
 
 	CHECK_ARGS(3, "queue path mask");
 
@@ -176,15 +167,6 @@ static int glue_add_watch(cdata, interp, objc, objv) //<<<
 	wd = inotify_add_watch(queue_fd, path, mask);
 	if (wd == -1)
 		THROW_ERROR("Problem creating watch on ", path);
-
-	entry = Tcl_CreateHashEntry(&g_paths, path, &is_new);
-	if (is_new) {
-		// This was a new watch
-	} else {
-		// This was an update on an existing watch
-	}
-
-	Tcl_SetHashValue(entry, (ClientData)wd);
 
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(wd));
 
@@ -199,125 +181,15 @@ static int glue_rm_watch(cdata, interp, objc, objv) //<<<
 	Tcl_Obj *CONST	objv[];
 {
 	int				queue_fd, wd, ret;
-	const char		*path;
-	Tcl_HashEntry	*entry;
 
-	CHECK_ARGS(2, "queue path");
+	CHECK_ARGS(2, "queue wd");
 
 	TEST_OK(get_queue_fd_from_chan(interp, objv[1], &queue_fd));
-	path = Tcl_GetString(objv[2]);
-
-	entry = Tcl_FindHashEntry(&g_paths, path);
-
-	if (entry == NULL) {
-		Tcl_SetErrorCode(interp, "no_watches_on_path", path, NULL);
-		THROW_ERROR("Path is not watched: ", path);
-	}
-
-	wd = (int)Tcl_GetHashValue(entry);
+	TEST_OK(Tcl_GetIntFromObj(interp, objv[2], &wd));
 
 	ret = inotify_rm_watch(queue_fd, wd);
 
-	Tcl_DeleteHashEntry(entry);
-
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(ret));
-
-	return TCL_OK;
-}
-
-//>>>
-static int glue_slurp_queue(cdata, interp, objc, objv) //<<<
-	ClientData		cdata;
-	Tcl_Interp		*interp;
-	int				objc;
-	Tcl_Obj *CONST	objv[];
-{
-	unsigned int			waiting, offset, eventsize;
-	int						queue_fd, res, block;
-	struct inotify_event	*event;
-	unsigned char			*buf;
-	size_t					got;
-	Tcl_Obj					*result;
-
-	if (objc < 2 && objc > 3) {
-		CHECK_ARGS(2, "queue ?block?");
-	}
-
-	if (objc == 3) {
-		TEST_OK(Tcl_GetBooleanFromObj(interp, objv[2], &block));
-	} else {
-		block = 0;
-	}
-
-	TEST_OK(get_queue_fd_from_chan(interp, objv[1], &queue_fd));
-
-	waiting = 0;
-	res = ioctl(queue_fd, FIONREAD, (char *)&waiting);
-
-	if (res == -1)
-		THROW_ERROR("Problem checking queue length");
-
-	result = Tcl_NewListObj(0, NULL);
-	if (!block && waiting == 0) {
-		Tcl_SetObjResult(interp, result);
-		return TCL_OK;
-	}
-
-	offset = 0;
-	if (waiting < sizeof(struct inotify_event) + 256) {
-		// Force a bigger buffer, and sit waiting for an event
-		waiting = sizeof(struct inotify_event) + 256;
-	}
-	buf = (unsigned char *)malloc(waiting);
-	event = (struct inotify_event *)(buf + offset);
-
-	got = read(queue_fd, buf, waiting);
-
-	while (got > 0) {
-		eventsize = sizeof(struct inotify_event) + event->len;
-		got -= eventsize;
-		offset += eventsize;
-
-		if (Tcl_ListObjAppendElement(interp, result,
-					Tcl_NewStringObj(event->name, -1)) != TCL_OK) goto wobbly;
-		if (Tcl_ListObjAppendElement(interp, result,
-					Tcl_NewIntObj(event->mask)) != TCL_OK) goto wobbly;
-
-		event = (struct inotify_event *)(buf + offset);
-	}
-
-	free(buf);
-
-	Tcl_SetObjResult(interp, result);
-
-	return TCL_OK;
-
-wobbly:
-	free(buf);
-	return TCL_ERROR;
-}
-
-//>>>
-static int glue_watched_paths(cdata, interp, objc, objv) //<<<
-	ClientData		cdata;
-	Tcl_Interp		*interp;
-	int				objc;
-	Tcl_Obj *CONST	objv[];
-{
-	Tcl_HashEntry	*entry;
-	Tcl_HashSearch	searchPtr;
-	Tcl_Obj			*result;
-
-	result = Tcl_NewListObj(0, NULL);
-
-	entry = Tcl_FirstHashEntry(&g_paths, &searchPtr);
-	while (entry != NULL) {
-		TEST_OK(Tcl_ListObjAppendElement(interp, result,
-					Tcl_NewStringObj(Tcl_GetHashKey(&g_paths, entry), -1)));
-		entry = Tcl_NextHashEntry(&searchPtr);
-	}
-
-	Tcl_SetObjResult(interp, result);
 
 	return TCL_OK;
 }
@@ -357,7 +229,7 @@ static int glue_decode_events(cdata, interp, objc, objv) //<<<
 		ADD_ELEM(Tcl_NewIntObj(event->wd));
 		ADD_ELEM(mask2list(event->mask));
 		ADD_ELEM(Tcl_NewIntObj(event->cookie));
-		ADD_ELEM(Tcl_NewIntObj(event->len));
+		//ADD_ELEM(Tcl_NewIntObj(event->len));
 		if (event->len > 0) {
 			// Why not give event->len as the length?  len includes null padding
 			ADD_ELEM(Tcl_NewStringObj(event->name, -1));
@@ -384,13 +256,9 @@ int Inotify_Init(Tcl_Interp *interp) //<<<
 	if (sizeof(ClientData) < sizeof(int))
 		THROW_ERROR("On this platform ints are bigger than pointers.  That freaks us out, sorry");
 
-	Tcl_InitHashTable(&g_paths, TCL_STRING_KEYS);
-
 	NEW_CMD("inotify::create_queue", glue_create_queue);
 	NEW_CMD("inotify::add_watch", glue_add_watch);
 	NEW_CMD("inotify::rm_watch", glue_rm_watch);
-	NEW_CMD("inotify::slurp_queue", glue_slurp_queue);
-	NEW_CMD("inotify::watched_paths", glue_watched_paths);
 	NEW_CMD("inotify::decode_events", glue_decode_events);
 
 	return TCL_OK;

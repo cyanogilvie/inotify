@@ -80,7 +80,7 @@ TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
 AC_OUTPUT([inotify.tcl])
-TEA_ADD_TCL_SOURCES([inotify.tcl])
+TEA_ADD_TCL_SOURCES([inotify.tcl scripts/*])
 
 #--------------------------------------------------------------------
 # __CHANGE__
@@ -98,7 +98,7 @@ TEA_ADD_TCL_SOURCES([inotify.tcl])
 
 # Add pkgIndex.tcl if it is generated in the Makefile instead of ./configure
 # and change Makefile.in to move it from CONFIG_CLEAN_FILES to BINARIES var.
-CLEANFILES="inotify.tcl"
+CLEANFILES="inotify.tcl scripts-stamp scripts/tclIndex"
 AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------

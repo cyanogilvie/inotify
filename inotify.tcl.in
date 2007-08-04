@@ -1,10 +1,14 @@
 load [file join $::inotify::library @PKG_LIB_FILE@]
 
+package require Itcl
+
 namespace eval ::inotify {
 	namespace export *
 
 	variable version @PACKAGE_VERSION@.@EXTRA_VERSION@
 }
+
+lappend auto_path	$::inotify::library
 
 package provide @PACKAGE_NAME@ $::inotify::version
 
