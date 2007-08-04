@@ -21,20 +21,36 @@ test basic-1.1 {Add and remove a watch} -setup { #<<<
 #>>>
 test basic-1.2 {Detect a file creation in a dir} -setup { #<<<
 	set queue	[inotify::create_queue]
-	fconfigure $queue -blocking 0 -buffering none -translation binary -encoding binary
-	#set wd	[inotify::add_watch $queue [file join $tmpdir foo] {IN_ALL_EVENTS}]
+	fconfigure $queue \
+			-blocking 0 \
+			-buffering none \
+			-translation binary \
+			-encoding binary
 	set wd	[inotify::add_watch $queue $tmpdir {IN_ALL_EVENTS}]
-	puts stderr "wd is: ($wd)"
+	set wd_map($wd)	$tmpdir
+
+	set ::tmp	"\n"
 	proc readable {fd} {
-		puts stderr "Got readable on ($fd)"
 		if {[eof $fd]} {
-			puts "Queue collapsed"
-			set ::done 1
+			set ::done -2
 			return
 		}
 		set dat	[read $fd]
-		puts "Got [string length $dat] bytes on queue"
-		set ::done 1
+		set events	[inotify::decode_events $dat]
+		set all_done	0
+		foreach event $events {
+			set wd	[lindex $event 0]
+			if {[info exists ::wd_map($wd)]} {
+				set event	[lreplace $event 0 0 $::wd_map($wd)]
+			}
+			append ::tmp "Event:\n\t[join $event \n\t]\n--------------\n"
+			if {[lsearch [lindex $event 1] IN_DELETE] != -1} {
+				set all_done	1
+			}
+		}
+		if {$all_done} {
+			set ::done $::tmp
+		}
 	}
 } -body {
 	fileevent $queue readable [list readable $queue]
@@ -44,17 +60,54 @@ test basic-1.2 {Detect a file creation in a dir} -setup { #<<<
 
 	file delete [file join $tmpdir foo]
 
-	puts stderr "waiting on ($tmpdir)"
 	after 3000 {set ::done -1}
-	#inotify::slurp_queue $queue false
+
 	vwait ::done
 	set ::done
 } -cleanup {
-	#inotify::rm_watch $queue [file join $tmpdir foo]
+	if {[info exists ::tmp]} {
+		unset ::tmp
+	}
 	inotify::rm_watch $queue $tmpdir
 	if {[info exists queue]} {close $queue; unset queue}
 	rename readable {}
-} -result {1}
+} -result {
+Event:
+	/lv/home/cyan/git/inotify-tcl/tmp
+	IN_CREATE
+	0
+	16
+	foo
+--------------
+Event:
+	/lv/home/cyan/git/inotify-tcl/tmp
+	IN_OPEN
+	0
+	16
+	foo
+--------------
+Event:
+	/lv/home/cyan/git/inotify-tcl/tmp
+	IN_MODIFY
+	0
+	16
+	foo
+--------------
+Event:
+	/lv/home/cyan/git/inotify-tcl/tmp
+	IN_CLOSE_WRITE
+	0
+	16
+	foo
+--------------
+Event:
+	/lv/home/cyan/git/inotify-tcl/tmp
+	IN_DELETE
+	0
+	16
+	foo
+--------------
+}
 #>>>
 test basic-1.3 {Management of watched paths list} -setup { #<<<
 	set queue	[inotify::create_queue]

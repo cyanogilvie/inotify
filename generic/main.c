@@ -76,9 +76,37 @@ static int list2mask(interp, list, mask) //<<<
 	}
 
 	*mask = build;
-	fprintf(stderr, "Mask is: 0x%08x, from (%s)\n", *mask, Tcl_GetString(list));
 
 	return TCL_OK;
+}
+
+//>>>
+static Tcl_Obj *mask2list(uint32_t mask) //<<<
+{
+	Tcl_Obj *result = Tcl_NewListObj(0, NULL);
+
+#define CHECK_BIT(bit, str) \
+	if ((mask & bit) == bit) \
+		Tcl_ListObjAppendElement(NULL, result, Tcl_NewStringObj(str, -1));
+
+	CHECK_BIT(IN_ACCESS,		"IN_ACCESS");
+	CHECK_BIT(IN_ATTRIB,		"IN_ATTRIB");
+	CHECK_BIT(IN_CLOSE_WRITE,	"IN_CLOSE_WRITE");
+	CHECK_BIT(IN_CLOSE_NOWRITE,	"IN_CLOSE_NOWRITE");
+	CHECK_BIT(IN_CREATE,		"IN_CREATE");
+	CHECK_BIT(IN_DELETE,		"IN_DELETE");
+	CHECK_BIT(IN_DELETE_SELF,	"IN_DELETE_SELF");
+	CHECK_BIT(IN_MODIFY,		"IN_MODIFY");
+	CHECK_BIT(IN_MOVE_SELF,		"IN_MOVE_SELF");
+	CHECK_BIT(IN_MOVED_FROM,	"IN_MOVED_FROM");
+	CHECK_BIT(IN_MOVED_TO,		"IN_MOVED_TO");
+	CHECK_BIT(IN_OPEN,			"IN_OPEN");
+	CHECK_BIT(IN_IGNORED,		"IN_IGNORED");
+	CHECK_BIT(IN_ISDIR,			"IN_ISDIR");
+	CHECK_BIT(IN_Q_OVERFLOW,	"IN_Q_OVERFLOW");
+	CHECK_BIT(IN_UNMOUNT,		"IN_UNMOUNT");
+
+	return result;
 }
 
 //>>>
@@ -98,7 +126,6 @@ static int glue_create_queue(cdata, interp, objc, objv) //<<<
 	channel = Tcl_MakeFileChannel((ClientData)queue_fd, TCL_READABLE);
 	Tcl_RegisterChannel(interp, channel);
 	channel_name = Tcl_GetChannelName(channel);
-	fprintf(stderr, "queue fd is: %d, channel name %s\n", queue_fd, channel_name);
 
 	Tcl_SetObjResult(interp, Tcl_NewStringObj(channel_name, -1));
 
@@ -118,7 +145,7 @@ static int get_queue_fd_from_chan(interp, handle, queue_fd) //<<<
 	if (channel == NULL)
 		THROW_ERROR("Invalid queue handle: ", Tcl_GetString(handle));
 
-	if (chan_mode & TCL_READABLE != TCL_READABLE)
+	if ((chan_mode & TCL_READABLE) != TCL_READABLE)
 		THROW_ERROR("Queue exists, but is not readable.  Wierd, man");
 
 	if (Tcl_GetChannelHandle(channel, TCL_READABLE, (ClientData *)queue_fd) != TCL_OK) {
@@ -211,7 +238,6 @@ static int glue_slurp_queue(cdata, interp, objc, objv) //<<<
 	unsigned char			*buf;
 	size_t					got;
 	Tcl_Obj					*result;
-	int						tmp = 0;
 
 	if (objc < 2 && objc > 3) {
 		CHECK_ARGS(2, "queue ?block?");
@@ -227,7 +253,6 @@ static int glue_slurp_queue(cdata, interp, objc, objv) //<<<
 
 	waiting = 0;
 	res = ioctl(queue_fd, FIONREAD, (char *)&waiting);
-	fprintf(stderr, "%d bytes report waiting\n", waiting);
 
 	if (res == -1)
 		THROW_ERROR("Problem checking queue length");
@@ -247,15 +272,11 @@ static int glue_slurp_queue(cdata, interp, objc, objv) //<<<
 	event = (struct inotify_event *)(buf + offset);
 
 	got = read(queue_fd, buf, waiting);
-	fprintf(stderr, "Got %d bytes\n", got);
 
 	while (got > 0) {
-		tmp++;
 		eventsize = sizeof(struct inotify_event) + event->len;
 		got -= eventsize;
 		offset += eventsize;
-
-		fprintf(stderr, "Event #%d size: %d bytes, %d remain\n", tmp, eventsize, got);
 
 		if (Tcl_ListObjAppendElement(interp, result,
 					Tcl_NewStringObj(event->name, -1)) != TCL_OK) goto wobbly;
@@ -263,12 +284,6 @@ static int glue_slurp_queue(cdata, interp, objc, objv) //<<<
 					Tcl_NewIntObj(event->mask)) != TCL_OK) goto wobbly;
 
 		event = (struct inotify_event *)(buf + offset);
-
-		if (tmp > 50) {
-			fprintf(stderr, "Patience exceeded\n");
-			Tcl_SetObjResult(interp, Tcl_NewStringObj("Patience exceeded", -1));
-			goto wobbly;
-		}
 	}
 
 	free(buf);
@@ -308,6 +323,59 @@ static int glue_watched_paths(cdata, interp, objc, objv) //<<<
 }
 
 //>>>
+static int glue_decode_events(cdata, interp, objc, objv) //<<<
+	ClientData		cdata;
+	Tcl_Interp		*interp;
+	int				objc;
+	Tcl_Obj *CONST	objv[];
+{
+	unsigned char			*raw;
+	int						raw_len, remaining, eventsize, offset;
+	struct inotify_event	*event;
+	Tcl_Obj					*result;
+
+	CHECK_ARGS(1, "raw_event_data");
+
+	raw = Tcl_GetByteArrayFromObj(objv[1], &raw_len);
+
+	offset = 0;
+	remaining = raw_len;
+	event = (struct inotify_event *)(raw + offset);
+
+	result = Tcl_NewListObj(0, NULL);
+
+	while (remaining > 0) {
+		Tcl_Obj		*evdata = Tcl_NewListObj(0, NULL);
+
+		eventsize = sizeof(struct inotify_event) + event->len;
+		remaining -= eventsize;
+		offset += eventsize;
+
+#define ADD_ELEM(elem) \
+		TEST_OK(Tcl_ListObjAppendElement(interp, evdata, elem));
+
+		ADD_ELEM(Tcl_NewIntObj(event->wd));
+		ADD_ELEM(mask2list(event->mask));
+		ADD_ELEM(Tcl_NewIntObj(event->cookie));
+		ADD_ELEM(Tcl_NewIntObj(event->len));
+		if (event->len > 0) {
+			// Why not give event->len as the length?  len includes null padding
+			ADD_ELEM(Tcl_NewStringObj(event->name, -1));
+		} else {
+			ADD_ELEM(Tcl_NewStringObj("", 0));
+		}
+
+		TEST_OK(Tcl_ListObjAppendElement(interp, result, evdata));
+
+		event = (struct inotify_event *)(raw + offset);
+	}
+
+	Tcl_SetObjResult(interp, result);
+
+	return TCL_OK;
+}
+
+//>>>
 int Inotify_Init(Tcl_Interp *interp) //<<<
 {
 	if (Tcl_InitStubs(interp, "8.1", 0) == NULL)
@@ -323,6 +391,7 @@ int Inotify_Init(Tcl_Interp *interp) //<<<
 	NEW_CMD("inotify::rm_watch", glue_rm_watch);
 	NEW_CMD("inotify::slurp_queue", glue_slurp_queue);
 	NEW_CMD("inotify::watched_paths", glue_watched_paths);
+	NEW_CMD("inotify::decode_events", glue_decode_events);
 
 	return TCL_OK;
 }
