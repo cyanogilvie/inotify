@@ -77,7 +77,7 @@ In the table above, those applicable to the watched path itself are flagged with
 an \fBs\fR and those applicable to children of the watched path with a \fBc\fR.
 .PP
 There are three convenience flags defined: \fBIN_ALL_EVENTS\fR, which selects
-all available flags, \fBIN_MOVE\fR which is equivalent to \fB{IN_MOVED_FROM
+all the above flags, \fBIN_MOVE\fR which is equivalent to \fB{IN_MOVED_FROM
 IN_MOVED_TO}\fR, and \fBIN_CLOSE\fR, which is equivalent to
 \fB{IN_CLOSE_WRITE IN_CLOSE_NOWRITE}\fR.
 .PP
