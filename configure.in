@@ -19,8 +19,8 @@ dnl	to configure the system for the local environment.
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([inotify], [0])
-EXTRA_VERSION="1.0"
+AC_INIT([inotify], [1])
+EXTRA_VERSION="0.0"
 AC_SUBST(EXTRA_VERSION)
 
 #--------------------------------------------------------------------
@@ -174,10 +174,12 @@ TEA_MAKE_LIB
 TEA_PROG_TCLSH
 #TEA_PROG_WISH
 
+AC_CHECK_HEADER([tclstuff.h], [], AC_MSG_ERROR([Need tclstuff.h from tcldev (available from sourceforge.net/projects/tcl-tlc)]))
+
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the Makefile.
 # You may alternatively have a special pkgIndex.tcl.in or other files
 # which require substituting th AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([Makefile pkgIndex.tcl])
+AC_OUTPUT([Makefile pkgIndex.tcl teapot.txt])

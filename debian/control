@@ -2,7 +2,7 @@ Source: inotify-tcl
 Section: unknown
 Priority: extra
 Maintainer: Cyan Ogilvie <cyan.ogilvie@gmail.com>
-Build-Depends: debhelper (>= 5), autotools-dev, autoconf, fakeroot, tcl8.4-dev, liblocale-gettext-perl, debhelper, gnupg, tcldev
+Build-Depends: debhelper (>= 5), autotools-dev, autoconf, fakeroot, tcl-dev, liblocale-gettext-perl, debhelper, gnupg, tcldev
 Standards-Version: 3.7.2
 
 Package: inotify-tcl

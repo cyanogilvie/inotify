@@ -437,6 +437,14 @@ uninstall-binaries:
 	  rm -f $(DESTDIR)$(bindir)/$$p; \
 	done
 
+teapot: all
+	-rm -f teapot/*
+	teapot-pkg generate --type zip --output teapot .
+
+refresh-teapot: teapot
+	teacup remove @PACKAGE_NAME@
+	teacup install teapot/*
+
 .PHONY: all binaries clean depend distclean doc install libraries test
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
