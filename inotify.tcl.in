@@ -1,5 +1,3 @@
-package require Itcl
-
 namespace eval ::inotify {
 	namespace export *
 
@@ -11,7 +9,7 @@ namespace eval ::inotify {
 
 load [file join $::inotify::library @PKG_LIB_FILE@]
 
-lappend auto_path	[file join $::inotify::library scripts]
+source [file join $::inotify::library scripts queue.tcl]
 
 package provide @PACKAGE_NAME@ $::inotify::version
 
