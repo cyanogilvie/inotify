@@ -174,7 +174,8 @@ TEA_MAKE_LIB
 TEA_PROG_TCLSH
 #TEA_PROG_WISH
 
-AC_CHECK_HEADER([tclstuff.h], [], AC_MSG_ERROR([Need tclstuff.h from tcldev (available from sourceforge.net/projects/tcl-tlc)]))
+# TODO: need to pass the tcl includes or it fails because it can't find tcl.h
+#AC_CHECK_HEADER([tclstuff.h], [], AC_MSG_ERROR([Need tclstuff.h from tcldev (available from sourceforge.net/projects/tcl-tlc)]))
 
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the Makefile.
