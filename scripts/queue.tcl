@@ -9,7 +9,7 @@ oo::class create inotify::queue {
 	}
 
 	constructor {a_cb} { #<<<
-		my consumer
+		my variable consumer
 
 		set cb			$a_cb
 		set wd_map		[dict create]
@@ -28,7 +28,7 @@ oo::class create inotify::queue {
 
 	#>>>
 	destructor { #<<<
-		my consumer
+		my variable consumer
 
 		if {[info exists queue_handle]} {
 			dict for {wd path} $wd_map {
