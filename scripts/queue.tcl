@@ -21,10 +21,10 @@ oo::class create inotify::queue {
 				-buffering none \
 				-translation binary \
 				-encoding binary
-		set consumer	"consumer_[string map {:: _} [self]]"
+		set consumer	"::consumer_[string map {:: _} [self]]"
 		coroutine $consumer my _readable
 		puts stderr "created coroutine consumer: ($consumer)"
-		chan event $queue_handle readable $consumer
+		chan event $queue_handle readable [list $consumer]
 	}
 
 	#>>>
