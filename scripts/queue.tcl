@@ -77,7 +77,9 @@ oo::class create inotify::queue {
 
 	method _readable {} { #<<<
 		while {1} {
+			puts stderr "foo"
 			yield
+			puts stderr "bar"
 
 			if {[chan eof $queue_handle]} {
 				log error "Queue handle closed"
@@ -116,6 +118,7 @@ oo::class create inotify::queue {
 				}
 			}
 		}
+		puts stderr "baz"
 	}
 
 	#>>>
