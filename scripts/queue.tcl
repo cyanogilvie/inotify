@@ -23,6 +23,7 @@ oo::class create inotify::queue {
 				-encoding binary
 		set consumer	"consumer_[string map {:: _} [self]]"
 		coroutine $consumer my _readable
+		puts stderr "created coroutine consumer: ($consumer)"
 		chan event $queue_handle readable $consumer
 	}
 
@@ -30,6 +31,7 @@ oo::class create inotify::queue {
 	destructor { #<<<
 		my variable consumer
 
+		puts stderr "in destructor"
 		if {[info exists queue_handle]} {
 			dict for {wd path} $wd_map {
 				try {
