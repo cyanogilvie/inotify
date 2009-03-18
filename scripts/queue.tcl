@@ -22,7 +22,7 @@ oo::class create inotify::queue {
 				-translation binary \
 				-encoding binary
 		set consumer	"consumer_[string map {:: _} [self]]"
-		coroutine $consumer my readable
+		coroutine $consumer my _readable
 		chan event $queue_handle readable $consumer
 	}
 
