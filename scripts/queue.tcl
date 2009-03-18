@@ -23,7 +23,6 @@ oo::class create inotify::queue {
 				-encoding binary
 		set consumer	"::consumer_[string map {:: _} [self]]"
 		coroutine $consumer my _readable
-		puts stderr "created coroutine consumer: ($consumer)"
 		chan event $queue_handle readable [list $consumer]
 	}
 
@@ -31,7 +30,6 @@ oo::class create inotify::queue {
 	destructor { #<<<
 		my variable consumer
 
-		puts stderr "in destructor"
 		if {[info exists queue_handle]} {
 			dict for {wd path} $wd_map {
 				try {
@@ -79,9 +77,7 @@ oo::class create inotify::queue {
 
 	method _readable {} { #<<<
 		while {1} {
-			puts stderr "foo"
 			yield
-			puts stderr "bar"
 
 			if {[chan eof $queue_handle]} {
 				log error "Queue handle closed"
@@ -120,7 +116,6 @@ oo::class create inotify::queue {
 				}
 			}
 		}
-		puts stderr "baz"
 	}
 
 	#>>>
