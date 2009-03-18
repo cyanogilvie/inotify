@@ -9,6 +9,8 @@ oo::class create inotify::queue {
 	}
 
 	constructor {a_cb} { #<<<
+		my consumer
+
 		set cb			$a_cb
 		set wd_map		[dict create]
 		set path_map	[dict create]
@@ -19,11 +21,15 @@ oo::class create inotify::queue {
 				-buffering none \
 				-translation binary \
 				-encoding binary
-		chan event $queue_handle readable [namespace code {my _readable}]
+		set consumer	"consumer_[string map {:: _} [self]]"
+		coroutine $consumer my readable
+		chan event $queue_handle readable $consumer
 	}
 
 	#>>>
 	destructor { #<<<
+		my consumer
+
 		if {[info exists queue_handle]} {
 			dict for {wd path} $wd_map {
 				try {
@@ -43,6 +49,9 @@ oo::class create inotify::queue {
 			} on error {errmsg options} {
 				log error "Error closing inotify queue handle: $errmsg"
 			}
+		}
+		if {[info exists consumer]} {
+			rename $consumer {}
 		}
 	}
 
@@ -67,39 +76,43 @@ oo::class create inotify::queue {
 	#>>>
 
 	method _readable {} { #<<<
-		if {[chan eof $queue_handle]} {
-			log error "Queue handle closed"
-			chan close $queue_handle
-			unset queue_handle
-			my destroy
-			return
-		}
+		while {1} {
+			yield
 
-		set dat		[chan read $queue_handle]
-		set events	[inotify::decode_events $dat]
-
-		foreach event $events {
-			set wd	[lindex $event 0]
-			if {$wd == -1} {
-				# This happens when we get a synthetic IN_Q_OVERFLOW event
-				set event	[lreplace $event 0 0 {}]
-			} elseif {![dict exists $wd_map $wd]} {
-				log error "No path map for watch descriptor ($wd)"
-				continue
-			} else {
-				set event	[lreplace $event 0 0 [dict get $wd_map $wd]]
+			if {[chan eof $queue_handle]} {
+				log error "Queue handle closed"
+				chan close $queue_handle
+				unset queue_handle
+				my destroy
+				return
 			}
 
-			set arr	{}
-			foreach field {path mask cookie name} value $event {
-				lappend arr $field $value
-			}
+			set dat		[chan read $queue_handle]
+			set events	[inotify::decode_events $dat]
 
-			if {[info exists cb]} {
-				try {
-					uplevel #0 $cb [list $arr]
-				} on error {errmsg options} {
-					log error "Error invoking callback for event ($arr): $errmsg\n[dict get $options -errorinfo]"
+			foreach event $events {
+				set wd	[lindex $event 0]
+				if {$wd == -1} {
+					# This happens when we get a synthetic IN_Q_OVERFLOW event
+					set event	[lreplace $event 0 0 {}]
+				} elseif {![dict exists $wd_map $wd]} {
+					log error "No path map for watch descriptor ($wd)"
+					continue
+				} else {
+					set event	[lreplace $event 0 0 [dict get $wd_map $wd]]
+				}
+
+				set arr	{}
+				foreach field {path mask cookie name} value $event {
+					lappend arr $field $value
+				}
+
+				if {[info exists cb]} {
+					try {
+						uplevel #0 $cb [list $arr]
+					} on error {errmsg options} {
+						log error "Error invoking callback for event ($arr): $errmsg\n[dict get $options -errorinfo]"
+					}
 				}
 			}
 		}

@@ -154,7 +154,7 @@ static int glue_add_watch(cdata, interp, objc, objv) //<<<
 	int				objc;
 	Tcl_Obj *CONST	objv[];
 {
-	int				queue_fd, wd, is_new;
+	int				queue_fd, wd;
 	uint32_t		mask;
 	const char		*path;
 
