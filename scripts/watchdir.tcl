@@ -36,7 +36,7 @@ oo::class create inotify::watchdir {
 				my _deep_remove $fqpath
 			}
 		} else {
-			if {"IN_CREATE" in $mask || "IN_MOVED_TO" in $mask || "IN_CLOSE_WRITE" in $mask} {
+			if {"IN_MOVED_TO" in $mask || "IN_CLOSE_WRITE" in $mask} {
 				my _new_file $fqpath
 			} elseif {"IN_DELETE" in $mask || "IN_MOVED_FROM" in $mask} {
 				my _remove_file $fqpath
