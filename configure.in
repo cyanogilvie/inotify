@@ -19,9 +19,7 @@ dnl	to configure the system for the local environment.
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([inotify], [2])
-EXTRA_VERSION="0.1"
-AC_SUBST(EXTRA_VERSION)
+AC_INIT([inotify], [2.1.0])
 
 #--------------------------------------------------------------------
 # Call TEA_INIT as the first TEA_ macro to set up initial vars.
@@ -79,8 +77,7 @@ TEA_ADD_INCLUDES([])
 TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
-AC_OUTPUT([inotify.tcl])
-TEA_ADD_TCL_SOURCES([inotify.tcl scripts/*])
+TEA_ADD_TCL_SOURCES([scripts/*])
 
 #--------------------------------------------------------------------
 # __CHANGE__
@@ -183,4 +180,4 @@ TEA_PROG_TCLSH
 # which require substituting th AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([Makefile pkgIndex.tcl teapot.txt])
+AC_OUTPUT([Makefile pkgIndex.tcl])

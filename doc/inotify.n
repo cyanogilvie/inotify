@@ -4,7 +4,7 @@
 .SH NAME
 inotify \- Listen for events on files and directories
 .SH SYNOPSIS
-\fBinotify::Queue\fI objectName \fR?-cb \fIcallback\fR?
+\fBinotify::queue create\fI objectName \fR\fIcallback\fR
 .br
 \fIobjectName\fB add_watch \fIpath\fR ?\fImask\fR?
 .br
@@ -42,9 +42,9 @@ name of the child under the watched directory that generated the event.
 .SH MASKS
 .PP
 Masks are a mechanism that the inotify syscalls provide to allow application
-programmers express which event types they are interested in receiving.  In the
-Tcl wrapper, masks are represented as lists, with an element for each flag that
-can be set in the mask.  The following flags are valid to specify to an
+programmers to express which event types they are interested in receiving.  In
+the Tcl wrapper, masks are represented as lists, with an element for each flag
+that can be set in the mask.  The following flags are valid to specify to an
 \fBadd_watch\fR call, and may be set on an event returned by the system: 
 .in +0.25i
 .TS
@@ -141,13 +141,13 @@ When a queue is deleted, all watches registered for it are removed.
 .SH COMMANDS
 .PP
 .TP
-\fBinotify::Queue \fIobjectName\fR ?-cb \fIcallback\fR?
-Create a queue object.  If \fIobjectName\fR is specified as \fB#auto\fR, then
-a unique object name is generated and returned as the result of the command.
-.br
+\fBinotify::queue create \fIobjectName\fR \fIcallback\fR
+.TP
+\fBinotify::queue new \fIcallback\fR
+Create a queue object.  Returns the name of the queue object created.
 The following options are valid when creating the queue:
 .TP
-\fB-cb \fIcallback\fR
+\fB\fIcallback\fR
 Register a callback that will be invoked with each event that arrives on the
 queue.  The specified \fIcallback\fR will be invoked after appending the
 details of the event in a dictionary:
@@ -174,14 +174,14 @@ name	When the watch is on a directory and an event
 .in -0.25i
 .TP
 \fIobjectName \fBadd_watch \fIpath \fR?\fImask\fR?
-Add a path to the list of paths watched in this queue, or update the flags
+Add \fIpath\fR to the list of paths watched in this queue, or update the flags
 of an existing watch if this path was already watched.  If \fImask\fR is
 not specified, it defaults to \fBIN_ALL_EVENTS\fR, otherwise it must be
 a list containing flags from tables 1 and 2.
 .TP
 \fIobjectName \fBrm_watch \fIpath\fR
 Remove a path from the list of watched paths.  If \fIpath\fR is not watched
-then an error is raised, with ::errorCode set to {no_watches \fIpath\fR}.
+then an error is raised, with -errorcode set to {no_watches \fIpath\fR}.
 .TP
 \fBdelete object \fIobjectName\fR
 Delete a queue.  All watches feeding this queue are removed.
@@ -192,13 +192,13 @@ Create a watch on the /tmp directory and print out any events as they arrive:
 .PP
 .CS
 % \fBpackage require inotify\fR
-0.1.0
+2.0.2
 % \fBproc something_happened {event_details} {
     puts "Event happened:"
     array set ev $event_details
     parray ev
 }\fR
-% \fBinotify::Queue queue -cb something_happened\fR
+% \fBinotify::queue create queue something_happened\fR
 queue
 % \fBqueue add_watch /tmp\fR
 /tmp

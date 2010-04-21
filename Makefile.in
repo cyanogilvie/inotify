@@ -220,7 +220,7 @@ install-libraries: libraries
 	    echo "Installing $(srcdir)/$$i" ; \
 	    $(INSTALL_DATA) $(srcdir)/$$i $(DESTDIR)$(pkgincludedir) ; \
 	done;
-	$(INSTALL_DATA) $(srcdir)/scripts/tclIndex $(DESTDIR)$(pkglibdir)
+	#$(INSTALL_DATA) $(srcdir)/scripts/tclIndex $(DESTDIR)$(pkglibdir)
 
 #========================================================================
 # Install documentation.  Unix manpages should go in the $(mandir)
