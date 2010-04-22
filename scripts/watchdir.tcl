@@ -79,11 +79,11 @@ oo::class create inotify::watchdir {
 			return
 		}
 		dict set files $fqpath 1
-		my new_file $fqpath
+		my new_file [my normalize_path $fqpath]
 	}
 
 	#>>>
-	method new_file {fqpath} { #<<<
+	method new_file {normpath} { #<<<
 	}
 
 	#>>>
@@ -91,12 +91,12 @@ oo::class create inotify::watchdir {
 		if {[dict exists $files $fqpath]} {
 			dict unset files $fqpath
 			?? {puts "Forgot file \"$fqpath\""}
-			my remove_file $fqpath
+			my remove_file [my normalize_path $fqpath]
 		}
 	}
 
 	#>>>
-	method remove_file {fqpath} { #<<<
+	method remove_file {normpath} { #<<<
 	}
 
 	#>>>
@@ -104,6 +104,11 @@ oo::class create inotify::watchdir {
 		foreach key [dict keys $files [file join $fqpath *]] {
 			my _remove_file $fqpath
 		}
+	}
+
+	#>>>
+	method normalize_path {fqpath} { #<<<
+		set fqpath
 	}
 
 	#>>>
