@@ -10,3 +10,8 @@ configure
 build-stamp
 config.guess
 config.sub
+*.o
+*.so
+teapot
+rpm/*.tar.gz
+teapot.txt

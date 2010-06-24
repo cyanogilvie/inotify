@@ -1,4 +1,4 @@
-Package @PACKAGE_NAME@ @PACKAGE_VERSION@.@EXTRA_VERSION@
+Package @PACKAGE_NAME@ @PACKAGE_VERSION@
 Meta description 
 Meta entrysource inotify.tcl
 Meta included    inotify.tcl @PKG_LIB_FILE@
