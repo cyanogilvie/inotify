@@ -1,4 +1,4 @@
-#include <tclstuff.h>
+#include "tclstuff.h"
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
