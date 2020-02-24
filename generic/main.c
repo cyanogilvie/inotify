@@ -3,6 +3,26 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <stdint.h>
+
+#if !defined(INT2PTR) && !defined(PTR2INT)
+#   if defined(HAVE_INTPTR_T) || defined(intptr_t)
+#	define INT2PTR(p) ((void *)(intptr_t)(p))
+#	define PTR2INT(p) ((intptr_t)(p))
+#   else
+#	define INT2PTR(p) ((void *)(p))
+#	define PTR2INT(p) ((long)(p))
+#   endif
+#endif
+#if !defined(UINT2PTR) && !defined(PTR2UINT)
+#   if defined(HAVE_UINTPTR_T) || defined(uintptr_t)
+#	define UINT2PTR(p) ((void *)(uintptr_t)(p))
+#	define PTR2UINT(p) ((uintptr_t)(p))
+#   else
+#	define UINT2PTR(p) ((void *)(p))
+#	define PTR2UINT(p) ((unsigned long)(p))
+#   endif
+#endif
 
 
 static int list2mask(interp, list, mask) //<<<
@@ -115,7 +135,7 @@ static int glue_create_queue(cdata, interp, objc, objv) //<<<
 	CHECK_ARGS(0, "");
 
 	queue_fd = inotify_init();
-	channel = Tcl_MakeFileChannel((ClientData)queue_fd, TCL_READABLE);
+	channel = Tcl_MakeFileChannel(INT2PTR(queue_fd), TCL_READABLE);
 	Tcl_RegisterChannel(interp, channel);
 	channel_name = Tcl_GetChannelName(channel);
 

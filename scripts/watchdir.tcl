@@ -4,9 +4,14 @@ oo::class create inotify::watchdir {
 	variable {*}{
 		queue
 		files
+		maxsize
 	}
 
 	constructor {dir} { #<<<
+		if {[self next] ne ""} next
+		if {![info exists maxsize]} {
+			set maxsize	1048576
+		}
 		set files	[dict create]
 		set queue	[inotify::queue new [namespace code {my _fs_event}]]
 		my _setup_watches $dir
@@ -18,6 +23,7 @@ oo::class create inotify::watchdir {
 			$queue destroy
 			unset queue
 		}
+		if {[self next] ne ""} next
 	}
 
 	#>>>
@@ -74,7 +80,7 @@ oo::class create inotify::watchdir {
 			puts stderr "New file is not readable: \"$fqpath\""
 			return
 		}
-		if {[file size $fqpath] > 1048576} {
+		if {[file size $fqpath] > $maxsize} {
 			puts stderr "New file is bigger than the 1 MiB threshold, ignoring: \"$fqpath\""
 			return
 		}
