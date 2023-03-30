@@ -212,4 +212,5 @@ AC_CHECK_TYPE([uintptr_t], [
 # which require substituting th AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([Makefile pkgIndex.tcl])
+AC_CONFIG_FILES([Makefile pkgIndex.tcl])
+AC_OUTPUT

@@ -1,4 +1,5 @@
 #include "tclstuff.h"
+#include <stddef.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -135,7 +136,7 @@ static int glue_create_queue(cdata, interp, objc, objv) //<<<
 	CHECK_ARGS(0, "");
 
 	queue_fd = inotify_init();
-	channel = Tcl_MakeFileChannel(INT2PTR(queue_fd), TCL_READABLE);
+	channel = Tcl_MakeFileChannel(INT2PTR((ptrdiff_t)queue_fd), TCL_READABLE);
 	Tcl_RegisterChannel(interp, channel);
 	channel_name = Tcl_GetChannelName(channel);
 
